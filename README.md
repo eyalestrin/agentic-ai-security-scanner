@@ -5,6 +5,10 @@ implementations against their intended behavior. Copilot performs the review; th
 included Python program updates reference snapshots and renders its findings as
 HTML and PDF. The program alone is **not** an AI scanner.
 
+The skill is report-only: it does not change target code, create patches or
+commits, or offer to implement fixes. Its reports include recommendations for
+the user to evaluate and apply separately.
+
 The review uses local OWASP MCP and AI Agent Security cheat sheets, OWASP
 Agentic Skills Top 10, OWASP Top 10 for Agentic Applications 2026, and a
 local MAESTRO review guide. Reports contain metadata, counts and findings ordered
@@ -86,15 +90,16 @@ In VS Code agent chat, for example:
 
 ```text
 /agentic-ai-security-scanner Review this workspace. Intent: answer support
-questions using internal documentation; do not modify customer data. Save reports
-to ./security-reports.
+questions using internal documentation; do not modify customer data.
 ```
 
 Provide the scope, intended behavior, authorized actions and output directory.
 The agent may ask for missing details and approval for file or terminal operations.
-The default report directory is the current workspace. Both files begin with
-`agentic-ai-scanner-report-` and include the scan's local date and time. The
-findings JSON is retained in the output directory; treat it as sensitive.
+By default, reports go directly in the current working directory for CLI scans,
+or the active workspace root for VS Code scans, not in the skill directory or
+a subdirectory. You can explicitly request another directory. Both files begin
+with `agentic-ai-scanner-report-` and include the scan's local date and time.
+The findings JSON is retained in the output directory; treat it as sensitive.
 The model/version is recorded only when known, otherwise explicitly marked unknown.
 
 For **Copilot CLI**, open a terminal in the target directory, run `copilot`, then
@@ -160,16 +165,19 @@ For automation around an already completed review, create the JSON described in
 then run:
 
 ```sh
-python3 "$HOME/.copilot/skills/agentic-ai-security-scanner/scanner.py" --report findings.json --output ./security-reports
+python3 "$HOME/.copilot/skills/agentic-ai-security-scanner/scanner.py" --report findings.json
 ```
 
 On Windows Command Prompt:
 
 ```cmd
-py -3 "%USERPROFILE%\.copilot\skills\agentic-ai-security-scanner\scanner.py" --report findings.json --output security-reports
+py -3 "%USERPROFILE%\.copilot\skills\agentic-ai-security-scanner\scanner.py" --report findings.json
 ```
 
 Use the same Python installation used by the installer. The renderer validates required
 fields, absolute paths, severity and official reference links, then produces both
 formats. It does not evaluate whether a finding is correct, inspect the target, or
 verify that the reported model is accurate.
+
+[`report-schema.md`](.github/skills/agentic-ai-security-scanner/report-schema.md)
+describes the intermediate JSON format used by the renderer.
