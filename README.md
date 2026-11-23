@@ -68,6 +68,13 @@ installer refuses to overwrite it: back up any reference updates, then move or
 remove the old directory before reinstalling. The copy is independent of the
 clone; changes to the clone do not automatically update it.
 
+If Ubuntu reports `No module named pip`, install pip and retry:
+
+```sh
+sudo apt install python3-pip
+python3 install.py
+```
+
 Open the **target project** in VS Code, sign into Copilot, start a fresh agent
 chat, type `/`, and select `/agentic-ai-security-scanner`. If it does not appear,
 use **Chat: Open Customizations** → **Skills**, confirm the skill location and
