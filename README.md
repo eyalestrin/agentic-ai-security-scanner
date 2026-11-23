@@ -13,8 +13,9 @@ The review uses local OWASP MCP and AI Agent Security cheat sheets, OWASP
 Agentic Skills Top 10, OWASP Top 10 for Agentic Applications 2026, and a
 local MAESTRO review guide. Reports contain metadata, counts and findings ordered
 Critical to Low, evidence, intent-based reasoning, recommendations and official
-references. A review is not proof of security; coverage depends on the code and
-context available to the model.
+references. Severity colors highlight the summary and findings in both formats;
+labels remain visible without color. A review is not proof of security; coverage
+depends on the code and context available to the model.
 
 ## Prerequisites
 

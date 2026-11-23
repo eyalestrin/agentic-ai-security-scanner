@@ -22,6 +22,13 @@ if DEPENDENCIES.is_dir():
     sys.path.insert(0, str(DEPENDENCIES))
 REFERENCES = SKILL_DIR / "references"
 SEVERITIES = ("Critical", "High", "Medium", "Low")
+SEVERITY_COLORS = {
+    "Critical": ("#a31b2c", "#fce8eb"),
+    "High": ("#974000", "#fff0df"),
+    "Medium": ("#755400", "#fff6cf"),
+    "Low": ("#165d50", "#e4f4ee"),
+}
+HEADING_COLOR = "#17324d"
 CHEATS = "https://raw.githubusercontent.com/OWASP/CheatSheetSeries/master/cheatsheets/"
 AST = "https://raw.githubusercontent.com/OWASP/www-project-agentic-skills-top-10/main/"
 ASI_PAGE = "https://genai.owasp.org/top-10-for-agentic-applications-2026/"
@@ -199,25 +206,33 @@ def report_html(data, timestamp):
     out = ["""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>Agentic AI Security Scanner Report</title><style>
 body{font-family:system-ui,sans-serif;max-width:1000px;margin:2em auto;padding:0 1em;color:#20242a}
-table{border-collapse:collapse;width:100%;margin-bottom:1.5em}th,td{border:1px solid #aaa;padding:.5em;text-align:left}
-th{background:#e8edf2}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f2f4f6;padding:1em}
-section{border-top:1px solid #aaa;padding-top:.5em}a{overflow-wrap:anywhere}
-</style></head><body><h1>Agentic AI Security Scanner Report</h1>"""]
+h1,h2,h3{color:#17324d}h2{border-bottom:2px solid #c9d8e6;padding-bottom:.3em}
+table{border-collapse:collapse;width:100%;margin-bottom:1.5em}th,td{border:1px solid #c5d0da;padding:.6em;text-align:left}
+th{background:#17324d;color:#fff}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f2f4f6;padding:1em}
+section{border-top:1px solid #c5d0da;padding-top:.5em}a{overflow-wrap:anywhere;color:#075b98}
+.severity{font-weight:700}.badge{display:inline-block;padding:.15em .5em;border-radius:.25em}
+"""]
+    out.extend(f".severity-{name.lower()}{{color:{foreground};background:{background}}}"
+               for name, (foreground, background) in SEVERITY_COLORS.items())
+    out.append("</style></head><body><h1>Agentic AI Security Scanner Report</h1>")
     fields = [("Name", data["name"]), ("Description", data["description"] or "Not provided"),
               ("Programming language(s)", ", ".join(data["languages"])), ("Scan model", data["model"]),
               ("Scan date and time", timestamp), ("Intended behavior", data["intent"]), ("Coverage and limitations", data["coverage"])]
     out.extend(f"<p><strong>{e(label)}:</strong> {e(value)}</p>" for label, value in fields)
     out.append("<h2>Executive summary</h2><table><tr><th>Severity</th><th>Count</th></tr>")
-    out.extend(f"<tr><td>{s}</td><td>{counts[s]}</td></tr>" for s in SEVERITIES)
+    out.extend(f'<tr><td class="severity severity-{s.lower()}">{s}</td><td>{counts[s]}</td></tr>' for s in SEVERITIES)
     out.append("</table><table><tr><th>Severity</th><th>Risk</th><th>Location</th></tr>")
     for f in data["findings"]:
-        out.append(f"<tr><td>{e(f['severity'])}</td><td>{e(f['title'])}</td><td>{e(f['file'])}:{f['line']}</td></tr>")
+        out.append(f'<tr><td class="severity severity-{f["severity"].lower()}">{e(f["severity"])}</td>'
+                   f"<td>{e(f['title'])}</td><td>{e(f['file'])}:{f['line']}</td></tr>")
     out.append("</table><h2>Detailed findings</h2>")
     if not data["findings"]:
         out.append("<p>No substantiated findings were identified in the reviewed scope. This is not a guarantee of security.</p>")
     for i, f in enumerate(data["findings"], 1):
         out.append(f"<section><h3>{i}. {e(f['title'])}</h3>")
-        for label, value in (("Severity", f["severity"]), ("Full file location", f"{f['file']}:{f['line']}"),
+        out.append(f'<p><strong>Severity:</strong> <span class="severity badge severity-{f["severity"].lower()}">'
+                   f'{e(f["severity"])}</span></p>')
+        for label, value in (("Full file location", f"{f['file']}:{f['line']}"),
                              ("Risk description and intent", f["description"])):
             out.append(f"<p><strong>{e(label)}:</strong> {e(value)}</p>")
         out.append(f"<h4>Code snippet</h4><pre>{e(f['snippet'])}</pre><h4>Recommendations</h4><p>{e(f['recommendation'])}</p><h4>References</h4><ul>")
@@ -249,6 +264,12 @@ def report_pdf(data, timestamp, output):
     styles = getSampleStyleSheet()
     for style in styles.byName.values():
         style.fontName = "ScannerFont"
+    for name in ("Title", "Heading2", "Heading3", "Heading4"):
+        styles[name].textColor = colors.HexColor(HEADING_COLOR)
+    styles.add(ParagraphStyle(name="TableHeader", parent=styles["BodyText"], textColor=colors.white))
+    for severity, (foreground, _) in SEVERITY_COLORS.items():
+        styles.add(ParagraphStyle(name=f"Severity{severity}", parent=styles["BodyText"],
+                                  textColor=colors.HexColor(foreground)))
     styles.add(ParagraphStyle(name="CodeWrap", parent=styles["BodyText"], fontSize=8,
                               leading=10, alignment=TA_LEFT, splitLongWords=True))
     story = []
@@ -263,27 +284,37 @@ def report_pdf(data, timestamp, output):
                          ("Coverage and limitations", data["coverage"])):
         paragraph(f"{label}: {value}")
     paragraph("Executive summary", "Heading2")
-    rows = [["Severity", "Count"]] + [[s, str(sum(f["severity"] == s for f in data["findings"]))] for s in SEVERITIES]
+    rows = [[Paragraph(value, styles["TableHeader"]) for value in ("Severity", "Count")]]
+    rows += [[Paragraph(s, styles[f"Severity{s}"]), str(sum(f["severity"] == s for f in data["findings"]))]
+             for s in SEVERITIES]
     table = Table(rows, colWidths=[200, 80], hAlign="LEFT", repeatRows=1)
-    table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                               ("GRID", (0, 0), (-1, -1), 0.5, colors.grey)]))
+    table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(HEADING_COLOR)),
+                               ("FONTNAME", (0, 0), (-1, -1), "ScannerFont"),
+                               ("GRID", (0, 0), (-1, -1), 0.5, colors.grey)]
+                              + [("BACKGROUND", (0, i), (0, i), colors.HexColor(SEVERITY_COLORS[s][1]))
+                                 for i, s in enumerate(SEVERITIES, 1)]))
     story.extend([table, Spacer(1, 10)])
     if data["findings"]:
-        rows = [[Paragraph(value, styles["BodyText"]) for value in ("Severity", "Risk", "Location")]]
+        rows = [[Paragraph(value, styles["TableHeader"]) for value in ("Severity", "Risk", "Location")]]
         for f in data["findings"]:
-            rows.append([Paragraph(html.escape(value), styles["BodyText"]) for value in
-                         (f["severity"], f["title"], f"{f['file']}:{f['line']}")])
+            rows.append([Paragraph(f["severity"], styles[f"Severity{f['severity']}"])] +
+                        [Paragraph(html.escape(value), styles["BodyText"]) for value in
+                         (f["title"], f"{f['file']}:{f['line']}")])
         table = Table(rows, colWidths=[60, 155, 230], hAlign="LEFT", repeatRows=1)
-        table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(HEADING_COLOR)),
                                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                                   ("VALIGN", (0, 0), (-1, -1), "TOP")]))
+                                   ("VALIGN", (0, 0), (-1, -1), "TOP")]
+                                  + [("BACKGROUND", (0, i), (0, i),
+                                      colors.HexColor(SEVERITY_COLORS[f["severity"]][1]))
+                                     for i, f in enumerate(data["findings"], 1)]))
         story.extend([table, Spacer(1, 10)])
     paragraph("Detailed findings", "Heading2")
     if not data["findings"]:
         paragraph("No substantiated findings were identified in the reviewed scope. This is not a guarantee of security.")
     for i, f in enumerate(data["findings"], 1):
         paragraph(f"{i}. {f['title']}", "Heading3")
-        for label, value in (("Severity", f["severity"]), ("Full file location", f"{f['file']}:{f['line']}"),
+        paragraph(f"Severity: {f['severity']}", f"Severity{f['severity']}")
+        for label, value in (("Full file location", f"{f['file']}:{f['line']}"),
                              ("Risk description and intent", f["description"])):
             paragraph(f"{label}: {value}")
         paragraph("Code snippet", "Heading4")

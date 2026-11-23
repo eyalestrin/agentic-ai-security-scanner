@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from pypdf import PdfReader
+from pypdf.generic import ContentStream
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +41,37 @@ def example():
 
 
 class ReportTests(unittest.TestCase):
+    def test_severity_colors_appear_in_both_formats(self):
+        data = example()
+        data["findings"] = []
+        for severity in scanner.SEVERITIES:
+            finding = copy.deepcopy(example()["findings"][0])
+            finding.update(severity=severity, title=f"{severity} finding")
+            data["findings"].append(finding)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "findings.json"
+            path.write_text(json.dumps(data), encoding="utf-8")
+            scanner.generate_report(path, tmp)
+            rendered = next(Path(tmp).glob("*.html")).read_text(encoding="utf-8")
+            pdf = PdfReader(str(next(Path(tmp).glob("*.pdf"))))
+            pdf_text = "\n".join(page.extract_text() for page in pdf.pages)
+            fill_colors = {
+                tuple(round(float(value), 3) for value in operands)
+                for page in pdf.pages
+                for operands, operator in ContentStream(page.get_contents(), pdf).operations
+                if operator == b"rg"
+            }
+            for severity, (foreground, background) in scanner.SEVERITY_COLORS.items():
+                with self.subTest(severity=severity):
+                    css_class = f"severity-{severity.lower()}"
+                    self.assertIn(f".{css_class}{{color:{foreground};background:{background}}}", rendered)
+                    self.assertEqual(rendered.count(f'class="severity {css_class}"'), 2)
+                    self.assertIn(f'class="severity badge {css_class}">{severity}</span>', rendered)
+                    self.assertIn(f"{severity} finding", pdf_text)
+                    for color in (foreground, background):
+                        rgb = tuple(round(int(color[i:i + 2], 16) / 255, 3) for i in (1, 3, 5))
+                        self.assertIn(rgb, fill_colors)
+
     def test_both_reports_are_sorted_escaped_and_linked(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "findings.json"
