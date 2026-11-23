@@ -1,0 +1,22 @@
+# Python environments and caches
+.venv/
+venv/
+.python-deps/
+python-interpreter.txt
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Scan output and intermediate findings
+security-reports/
+findings.json
+agentic-ai-scanner-report-*.html
+agentic-ai-scanner-report-*.pdf
+
+# Operating system metadata
+.DS_Store
+Thumbs.db

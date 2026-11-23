@@ -1,0 +1,4 @@
+# Installed into the skill's private .python-deps directory by install.py.
+reportlab>=4.2,<5
+pypdf>=5,<7
+fonttools>=4,<5
