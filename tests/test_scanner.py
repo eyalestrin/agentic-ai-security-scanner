@@ -2,6 +2,7 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -85,6 +86,46 @@ class ReportTests(unittest.TestCase):
         data["findings"][0]["severity"] = "Unknown"
         with self.assertRaises(ValueError):
             scanner.validate(data)
+
+    def test_temporary_findings_are_deleted_and_reports_go_to_scanned_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            findings = root / "findings.json"
+            target = root / "scanned"
+            target.mkdir()
+            findings.write_text(json.dumps(example()), encoding="utf-8")
+            with patch.object(sys, "argv", ["scanner.py", "--report", str(findings),
+                                            "--output", str(target), "--delete-findings"]):
+                self.assertEqual(scanner.main(), 0)
+            self.assertFalse(findings.exists())
+            self.assertEqual({p.suffix for p in target.iterdir()}, {".html", ".pdf"})
+
+    def test_temporary_findings_are_deleted_on_invalid_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            findings = Path(tmp) / "findings.json"
+            findings.write_text("invalid json", encoding="utf-8")
+            with patch.object(sys, "argv", ["scanner.py", "--report", str(findings),
+                                            "--output", tmp, "--delete-findings"]):
+                self.assertEqual(scanner.main(), 1)
+            self.assertFalse(findings.exists())
+
+    def test_standalone_renderer_preserves_input_by_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            findings = Path(tmp) / "findings.json"
+            findings.write_text(json.dumps(example()), encoding="utf-8")
+            with patch.object(sys, "argv", ["scanner.py", "--report", str(findings), "--output", tmp]):
+                self.assertEqual(scanner.main(), 0)
+            self.assertTrue(findings.exists())
+
+    def test_cleanup_failure_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            findings = Path(tmp) / "findings.json"
+            findings.write_text(json.dumps(example()), encoding="utf-8")
+            with patch.object(sys, "argv", ["scanner.py", "--report", str(findings),
+                                            "--output", tmp, "--delete-findings"]), \
+                 patch.object(scanner.Path, "unlink", side_effect=PermissionError("denied")):
+                self.assertEqual(scanner.main(), 1)
+            self.assertTrue(findings.exists())
 
 
 class UpdateTests(unittest.TestCase):

@@ -6,8 +6,8 @@ included Python program updates reference snapshots and renders its findings as
 HTML and PDF. The program alone is **not** an AI scanner.
 
 The skill is report-only: it does not change target code, create patches or
-commits, or offer to implement fixes. Its reports include recommendations for
-the user to evaluate and apply separately.
+commits, or offer to implement fixes or commit a summary. Its reports include
+recommendations for the user to evaluate and apply separately.
 
 The review uses local OWASP MCP and AI Agent Security cheat sheets, OWASP
 Agentic Skills Top 10, OWASP Top 10 for Agentic Applications 2026, and a
@@ -93,13 +93,14 @@ In VS Code agent chat, for example:
 questions using internal documentation; do not modify customer data.
 ```
 
-Provide the scope, intended behavior, authorized actions and output directory.
+Provide the scope, intended behavior and authorized actions.
 The agent may ask for missing details and approval for file or terminal operations.
-By default, reports go directly in the current working directory for CLI scans,
-or the active workspace root for VS Code scans, not in the skill directory or
-a subdirectory. You can explicitly request another directory. Both files begin
-with `agentic-ai-scanner-report-` and include the scan's local date and time.
-The findings JSON is retained in the output directory; treat it as sensitive.
+Reports go directly in the scanned directory, or in the parent directory when
+scanning a file, not in the skill directory or a subdirectory. If the installed
+skill directory itself is the target, the agent asks where to save reports.
+Both files begin with `agentic-ai-scanner-report-` and include the scan's local
+date and time. The scan uses a temporary findings JSON file and deletes it
+after report generation, including on failure.
 The model/version is recorded only when known, otherwise explicitly marked unknown.
 
 For **Copilot CLI**, open a terminal in the target directory, run `copilot`, then
@@ -177,7 +178,10 @@ py -3 "%USERPROFILE%\.copilot\skills\agentic-ai-security-scanner\scanner.py" --r
 Use the same Python installation used by the installer. The renderer validates required
 fields, absolute paths, severity and official reference links, then produces both
 formats. It does not evaluate whether a finding is correct, inspect the target, or
-verify that the reported model is accurate.
+verify that the reported model is accurate. The standalone renderer defaults to
+the current working directory; use `--output` to select the scanned directory.
+It preserves your input JSON by default. Pass `--delete-findings` only for a
+temporary file you want deleted, even if rendering fails.
 
 [`report-schema.md`](.github/skills/agentic-ai-security-scanner/report-schema.md)
 describes the intermediate JSON format used by the renderer.

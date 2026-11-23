@@ -324,7 +324,12 @@ def main():
     mode.add_argument("--update", action="store_true", help="Update the online OWASP reference snapshots")
     mode.add_argument("--report", metavar="FINDINGS_JSON", help="Render agent-authored findings")
     parser.add_argument("--output", default=".", help="Report output directory (default: current directory)")
+    parser.add_argument("--delete-findings", action="store_true",
+                        help="Delete the supplied findings file after rendering, even if rendering fails")
     args = parser.parse_args()
+    if args.delete_findings and not args.report:
+        parser.error("--delete-findings requires --report")
+    result = 0
     try:
         if args.update:
             update_references()
@@ -332,8 +337,15 @@ def main():
             generate_report(args.report, args.output)
     except (OSError, ValueError, ImportError, json.JSONDecodeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
-        return 1
-    return 0
+        result = 1
+    finally:
+        if args.delete_findings:
+            try:
+                Path(args.report).unlink(missing_ok=True)
+            except OSError as exc:
+                print(f"Error removing findings file: {exc}", file=sys.stderr)
+                result = 1
+    return result
 
 
 if __name__ == "__main__":
