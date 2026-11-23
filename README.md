@@ -84,6 +84,30 @@ chat, type `/`, and select `/agentic-ai-security-scanner`. If it does not appear
 use **Chat: Open Customizations** → **Skills**, confirm the skill location and
 restart the chat. See [VS Code agent skills](https://code.visualstudio.com/docs/agent-customization/agent-skills).
 
+## Uninstall
+
+The following commands remove the personal skill installation, including its
+private Python dependencies and local reference snapshots. Back up any
+reference updates you want to keep first. They do not remove your repository
+clone or reports saved in scanned folders.
+
+**Windows 11 (Command Prompt):**
+
+```cmd
+rmdir /s /q "%USERPROFILE%\.copilot\skills\agentic-ai-security-scanner"
+```
+
+**Ubuntu, Red Hat and macOS:**
+
+```sh
+rm -r -- "$HOME/.copilot/skills/agentic-ai-security-scanner"
+```
+
+Start a fresh VS Code chat, or run `/skills reload` in Copilot CLI. If the
+repository clone is open as a workspace, its project-scoped skill may still be
+discovered; close that workspace to stop using it without deleting the source.
+Other copies installed in project skill directories must be removed separately.
+
 ## Run a scan
 
 In VS Code agent chat, for example:
